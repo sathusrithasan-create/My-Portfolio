@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student GPA Calculator — Grade 6–13 (New Reform)</title>
+    <meta name="description" content="Student GPA calculator for Sri Lanka's new education reform (Grade 6–13) with school lookup, credit weighting, and PDF report." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin>
+    </script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin>
+    </script>
+    <script src="https://unpkg.com/@babel/standalone@7/babel.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js">
+    </script>
+    <style>
+        /* ─── THEME ─── */
+        :root {
+            --maroon: #721824;
+            --maroon-2: #8e2233;
+            --gold: #c99a3f;
+            --gold-light: #e8d5a3;
+            --bg: #faf8f6;
+            --surface: #fff;
+            --surface-2: #f5f2ef;
+            --fg: #2b2124;
+            --muted: #6b6165;
+            --border: #e6dfdb;
+            --ok: #15803d;
+            --bad: #b22222;
+            --radius: 10px;
+            --shadow: 0 4px 20px -6px rgba(114, 24, 36, 0.12);
+            --shadow-lg: 0 12px 40px -10px rgba(114, 24, 36, 0.18);
+        }
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: 'Inter', system-ui, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        h1,
+        h2,
+        h3 {
+            font-family: 'Playfair Display', Georgia, serif;
+            letter-spacing: -0.01em;
+            margin: 0;
+        }
+        .lang-ta,
+        .lang-ta * {
+            font-family: 'Noto Sans Tamil', 'Inter', sans-serif;
+        }
+
+        /* ─── HEADER ─── */
+        header {
+            background: linear-gradient(135deg, var(--maroon), var(--maroon-2));
+            color: #fff;
+            padding: 28px 16px;
+            position: relative;
+            overflow: hidden;
+        }
+        header::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        header .wrap {
+            position: relative;
+            z-index: 1;
+            max-width: 1080px;
+            margin: 0 auto;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        header .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        header .brand-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--gold), #b9832f);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+        }
+        header h1 {
+            font-size: 26px;
+            font-weight: 800;
+        }
+        header p {
+            margin: 2px 0 0;
+            opacity: 0.85;
+            font-size: 13px;
+        }
+        .lang-btn {
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .lang-btn:hover {
+            background: rgba(255, 255, 255, 0.22);
+        }
+
+        /* ─── LAYOUT ─── */
+        .wrap {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+        main {
+            padding: 24px 0 40px;
+        }
+
+        /* ─── CARDS ─── */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px 24px;
+            margin-bottom: 22px;
+            box-shadow: var(--shadow);
+            transition: box-shadow 0.2s;
+        }
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+        }
+        .card h2 {
+            font-size: 19px;
+            color: var(--maroon);
+            border-bottom: 2px solid var(--maroon);
+            padding-bottom: 10px;
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .card h2 .accent-line {
+            display: inline-block;
+            width: 4px;
+            height: 24px;
+            background: var(--maroon);
+            border-radius: 4px;
+        }
+
+        /* ─── GRID ─── */
+        .grid {
+            display: grid;
+            gap: 14px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+        .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+
+        /* ─── FORM ELEMENTS ─── */
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        input,
+        select {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--surface);
+            font: inherit;
+            font-size: 14px;
+            color: var(--fg);
+            transition: 0.15s;
+        }
+        input:focus,
+        select:focus {
+            outline: 2px solid var(--maroon);
+            outline-offset: 1px;
+        }
+        input:disabled,
+        select:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        /* ─── CHIPS / TOGGLES ─── */
+        .chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .chip {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 7px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            background: var(--surface);
+            transition: 0.15s;
+            user-select: none;
+            font-weight: 500;
+        }
+        .chip:hover {
+            border-color: var(--maroon);
+        }
+        .chip.on {
+            background: var(--maroon);
+            color: #fff;
+            border-color: var(--maroon);
+        }
+        .chip.off {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+        .chip .cred {
+            font-size: 10px;
+            opacity: 0.7;
+            margin-left: 4px;
+            font-weight: 400;
+        }
+        .chip.on .cred {
+            opacity: 0.8;
+        }
+
+        /* ─── GRADE BUTTONS ─── */
+        .grade-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+        .grade-tab {
+            padding: 8px 18px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--surface);
+            transition: 0.15s;
+        }
+        .grade-tab:hover {
+            border-color: var(--maroon);
+            color: var(--maroon);
+        }
+        .grade-tab.active {
+            background: var(--maroon);
+            color: #fff;
+            border-color: var(--maroon);
+            box-shadow: 0 4px 12px rgba(114, 24, 36, 0.25);
+        }
+
+        /* ─── TABLE ─── */
+        .table-wrap {
+            overflow-x: auto;
+            margin-top: 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th {
+            background: var(--maroon);
+            color: #fff;
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        tbody tr:nth-child(even) {
+            background: var(--surface-2);
+        }
+        tbody tr:hover {
+            background: #f0ebe8;
+        }
+        .c {
+            text-align: center;
+        }
+        .pass {
+            color: var(--ok);
+            font-weight: 700;
+        }
+        .fail {
+            color: var(--bad);
+            font-weight: 700;
+        }
+
+        .score-input {
+            width: 70px;
+            text-align: center;
+            padding: 5px 4px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            background: var(--surface);
+        }
+        .score-input:focus {
+            outline: 2px solid var(--maroon);
+            outline-offset: 1px;
+        }
+
+        /* ─── GPA BOX ─── */
+        .gpabox {
+            background: linear-gradient(135deg, var(--maroon), var(--maroon-2));
+            color: #fff;
+            border-radius: 14px;
+            padding: 24px 28px;
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 16px;
+        }
+        .gpabox .big {
+            font-size: 52px;
+            font-weight: 800;
+            line-height: 1;
+            font-family: 'Playfair Display', serif;
+        }
+        .gpabox .label {
+            font-size: 12px;
+            letter-spacing: 0.06em;
+            opacity: 0.8;
+            text-transform: uppercase;
+        }
+        .gpabox .right {
+            text-align: right;
+        }
+        .gpabox .classification {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        /* ─── BUTTONS ─── */
+        .btn {
+            border: 0;
+            border-radius: var(--radius);
+            padding: 11px 22px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: var(--maroon);
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: var(--maroon-2);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(114, 24, 36, 0.3);
+        }
+        .btn-gold {
+            background: linear-gradient(135deg, #d9ae52, #b9832f);
+            color: #2b2124;
+        }
+        .btn-gold:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(185, 131, 47, 0.35);
+        }
+        .btn-outline {
+            background: var(--surface);
+            color: var(--fg);
+            border: 1px solid var(--border);
+        }
+        .btn-outline:hover {
+            border-color: var(--maroon);
+            color: var(--maroon);
+        }
+        .btn-ghost {
+            background: transparent;
+            color: inherit;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 18px;
+        }
+        .actions-center {
+            justify-content: center;
+        }
+
+        /* ─── SCALE REF ─── */
+        .scale-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .scale-item {
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            padding: 10px 8px;
+            text-align: center;
+            background: var(--surface);
+        }
+        .scale-item .letter {
+            font-size: 18px;
+            font-weight: 800;
+            color: var(--maroon);
+        }
+        .scale-item .range {
+            font-size: 11px;
+            color: var(--muted);
+        }
+        .scale-item .pt {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .scale-item.fail {
+            border-color: var(--bad);
+            background: #fdf0ee;
+        }
+        .scale-item.fail .letter {
+            color: var(--bad);
+        }
+
+        /* ─── NOTE / FOOTER ─── */
+        .note {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 10px;
+        }
+        .note a {
+            color: var(--maroon);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .note a:hover {
+            text-decoration: underline;
+        }
+        footer {
+            padding: 24px 16px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 12px;
+        }
+
+        /* ─── LOADING ─── */
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--maroon);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ─── PRINT STYLES ─── */
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+            body {
+                background: #fff;
+                font-size: 12px;
+            }
+            .card {
+                box-shadow: none !important;
+                border: 1px solid #ddd;
+                break-inside: avoid;
+                padding: 14px 16px;
+                margin-bottom: 12px;
+            }
+            header {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                padding: 16px;
+            }
+            header .brand-icon {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .gpabox {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                padding: 16px 20px;
+            }
+            .gpabox .big {
+                font-size: 36px;
+            }
+            .grade-tab,
+            .chip,
+            .lang-btn {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .grade-tab.active,
+            .chip.on {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                background: var(--maroon) !important;
+                color: #fff !important;
+            }
+            .scale-item {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            table {
+                font-size: 11px;
+            }
+            th {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                background: var(--maroon) !important;
+                color: #fff !important;
+            }
+            .score-input {
+                border: 1px solid #ccc;
+                background: transparent;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .pass,
+            .fail {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .actions {
+                display: none !important;
+            }
+            main {
+                padding: 8px 0;
+            }
+            .wrap {
+                padding: 0 8px;
+            }
+            .note {
+                font-size: 10px;
+            }
+            footer {
+                border-top: 1px solid #ddd;
+                margin-top: 8px;
+                padding: 12px;
+            }
+            .card h2 {
+                font-size: 16px;
+                border-bottom-width: 1px;
+            }
+        }
+
+        /* ─── RESPONSIVE ─── */
+        @media (max-width: 640px) {
+            header .brand-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 18px;
+            }
+            header h1 {
+                font-size: 20px;
+            }
+            .card {
+                padding: 16px;
+            }
+            .gpabox .big {
+                font-size: 38px;
+            }
+            .gpabox .classification {
+                font-size: 16px;
+            }
+            .gpabox {
+                padding: 18px 20px;
+            }
+            .grid {
+                grid-template-columns: 1fr;
+            }
+            .scale-grid {
+                grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
+            }
+            .score-input {
+                width: 56px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-presets="react">
+        const { useState, useEffect, useMemo, useCallback } = React;
+
+        /* ================================================================
+           DATA
+           ================================================================ */
+
+        function scoreToGPA(s) {
+            if (s >= 90) return { point: 4.0, letter: 'A+', pass: true };
+            if (s >= 80) return { point: 3.7, letter: 'A', pass: true };
+            if (s >= 70) return { point: 3.3, letter: 'B+', pass: true };
+            if (s >= 60) return { point: 3.0, letter: 'B', pass: true };
+            if (s >= 50) return { point: 2.7, letter: 'C', pass: true };
+            if (s >= 40) return { point: 2.0, letter: 'S', pass: true };
+            return { point: 0, letter: 'F', pass: false };
+        }
+
+        function classify(g, lang) {
+            if (g >= 3.7) return lang === 'en' ? 'First Class Distinction' : 'முதல் வகுப்பு சிறப்பு';
+            if (g >= 3.3) return lang === 'en' ? 'Second Class Upper' : 'இரண்டாம் வகுப்பு மேல்';
+            if (g >= 3.0) return lang === 'en' ? 'Second Class Lower' : 'இரண்டாம் வகுப்பு கீழ்';
+            if (g >= 2.7) return lang === 'en' ? 'General Pass (Merit)' : 'பொதுத் தேர்ச்சி (தகுதி)';
+            if (g >= 2.0) return lang === 'en' ? 'General Pass' : 'பொதுத் தேர்ச்சி';
+            return lang === 'en' ? 'Not Passed' : 'தேர்ச்சி பெறவில்லை';
+        }
+
+        const JUNIOR = [
+            ['mother_tongue', 'Mother Tongue', 'தாய்மொழி', 3],
+            ['english', 'English Language', 'ஆங்கிலம்', 3],
+            ['second_nat', 'Second National Language', 'இரண்டாம் தேசிய மொழி', 1],
+            ['maths', 'Mathematics', 'கணிதம்', 3],
+            ['science', 'Science', 'விஞ்ஞானம்', 3],
+            ['hpe', 'Health & Physical Education', 'சுகாதாரம் & உடற்கல்வி', 2],
+            ['ict', 'Information & Communication Technology', 'தகவல் தொடர்பாடல் தொழில்நுட்பம்', 2],
+            ['tech_life', 'Technology for Life', 'வாழ்க்கைக்கான தொழில்நுட்பம்', 2],
+            ['geo', 'Geography', 'புவியியல்', 1],
+            ['history', 'History', 'வரலாறு', 2],
+            ['civic', 'Civic Education', 'பிரஜாநெறிக் கல்வி', 1],
+            ['religion', 'Religion & Value Education', 'சமய மற்றும் மதிப்புக் கல்வி', 2],
+            ['aesthetic', 'Aesthetic Education', 'அழகியற் கல்வி', 2],
+            ['entrepreneur', 'Entrepreneurship & Financial Literacy', 'தொழில்முனைவு & நிதி எழுத்தறிவு', 1],
+            ['sports', 'Sports, Clubs & Societies', 'விளையாட்டு, மன்றங்கள் & சங்கங்கள்', 2],
+            ['further', 'Further Learning Modules', 'மேலதிக கற்றல் தொகுதிகள்', 3],
+            ['transversal', 'Transversal Skills', 'குறுக்குவெட்டு திறன்கள்', 2],
+        ].map(([id, en, ta, credits]) => ({ id, en, ta, credits }));
+
+        const P1_COMPULSORY = [
+            ['mother_tongue', 'Mother Tongue', 'தாய்மொழி', 3],
+            ['english', 'English Language', 'ஆங்கிலம்', 3],
+            ['maths', 'Mathematics', 'கணிதம்', 3],
+            ['science', 'Science', 'விஞ்ஞானம்', 3],
+            ['religion', 'Religion & Value Education', 'சமய மற்றும் மதிப்புக் கல்வி', 2],
+        ].map(([id, en, ta, credits]) => ({ id, en, ta, credits }));
+
+        const P1_ELECTIVES = [
+            ['el_snl', 'Second National Language', 'இரண்டாம் தேசிய மொழி'],
+            ['el_ict', 'Information & Communication Technology', 'தகவல் தொடர்பாடல் தொழில்நுட்பம்'],
+            ['el_history', 'History', 'வரலாறு'],
+            ['el_civic', 'Civic Education', 'பிரஜாநெறிக் கல்வி'],
+            ['el_hpe', 'Health & Physical Education', 'சுகாதாரம் & உடற்கல்வி'],
+            ['el_agri_tech', 'Agriculture Management Technology', 'விவசாய முகாமைத்துவ தொழில்நுட்பம்'],
+            ['el_design_eng', 'Design & Engineering Technology', 'வடிவமைப்பு & பொறியியல் தொழில்நுட்பம்'],
+            ['el_food_tech', 'Food & Consumer Technology', 'உணவு & நுகர்வோர் தொழில்நுட்பம்'],
+            ['el_artistic', 'Artistic Product Technology', 'கலைப் பொருள் தொழில்நுட்பம்'],
+            ['el_aquatic', 'Aquatic Bio-resources Technology', 'நீர்வாழ் உயிரியல் தொழில்நுட்பம்'],
+            ['el_geo', 'Geography', 'புவியியல்'],
+            ['el_aesthetic', 'Aesthetics Education', 'அழகியற் கல்வி'],
+            ['el_entrepreneur', 'Entrepreneurship & Financial Literacy', 'தொழில்முனைவு & நிதி எழுத்தறிவு'],
+        ].map(([id, en, ta]) => ({ id, en, ta, credits: 2 }));
+
+        const P1_FURTHER = { id: 'further_learning', en: 'Further Learning (Academic / Skills Pathway)',
+            ta: 'மேலதிக கற்றல் (கல்வி / திறன் பாதை)', credits: 14 };
+        const P1_TRANSVERSAL = { id: 'transversal', en: 'Transversal Skills', ta: 'குறுக்குவெட்டு திறன்கள்',
+        credits: 3 };
+
+        const STREAMS = [
+            { id: 'science', en: 'Science', ta: 'விஞ்ஞானப் பிரிவு', subjects: [
+                    ['s1', 'Physics', 'பௌதிகவியல்', 4],
+                    ['s2', 'Chemistry', 'இரசாயனவியல்', 4],
+                    ['s3', 'Biology / Combined Mathematics', 'உயிரியல் / சேர்ப்புக் கணிதம்', 4]
+                ] },
+            { id: 'technology', en: 'Technology', ta: 'தொழில்நுட்பப் பிரிவு', subjects: [
+                    ['t1', 'Engineering Technology / Bio-System Tech', 'பொறியியல் தொழில்நுட்பம்', 4],
+                    ['t2', 'Science for Technology', 'தொழில்நுட்பத்திற்கான விஞ்ஞானம்', 4],
+                    ['t3', 'ICT / Agricultural Tech', 'ICT / விவசாய தொழில்நுட்பம்', 4]
+                ] },
+            { id: 'management', en: 'Management & Entrepreneurship', ta: 'முகாமைத்துவம் & தொழில்முனைவு', subjects: [
+                    ['m1', 'Business Studies', 'வணிகக் கற்கை', 4],
+                    ['m2', 'Accounting', 'கணக்கீடு', 4],
+                    ['m3', 'Economics', 'பொருளியல்', 4]
+                ] },
+            { id: 'humanities', en: 'Humanities & Social Sciences', ta: 'மனிதவியல் & சமூக விஞ்ஞானம்', subjects: [
+                    ['h1', 'History', 'வரலாறு', 4],
+                    ['h2', 'Geography', 'புவியியல்', 4],
+                    ['h3', 'Language & Literature', 'மொழி & இலக்கியம்', 4]
+                ] },
+            { id: 'vocational', en: 'Vocational', ta: 'தொழிற்கல்விப் பிரிவு', subjects: [
+                    ['v1', 'Vocational Specialization I', 'தொழிற்கல்வி விசேட I', 4],
+                    ['v2', 'Vocational Specialization II', 'தொழிற்கல்வி விசேட II', 4],
+                    ['v3', 'Industry Practice', 'தொழிற்துறை பயிற்சி', 4]
+                ] },
+        ].map(s => ({
+            ...s,
+            subjects: s.subjects.map(([id, en, ta, credits]) => ({ id, en, ta, credits }))
+        }));
+
+        const P2_COMMON = [
+            { id: 'gen_english', en: 'General English', ta: 'பொது ஆங்கிலம்', credits: 2 },
+            { id: 'git', en: 'General Information Technology (GIT)', ta: 'பொது தகவல் தொழில்நுட்பம் (GIT)',
+            credits: 2 },
+            { id: 'enrichment', en: 'Enrichment Modules', ta: 'செறிவூட்டல் தொகுதிகள்', credits: 2 },
+            { id: 'interdisciplinary', en: 'Interdisciplinary Modules', ta: 'பல்துறை தொகுதிகள்', credits: 2 },
+        ];
+
+        function getSubjectsForGrade(grade, { electives = [], stream = 'science' } = {}) {
+            if (grade >= 6 && grade <= 9) return JUNIOR;
+            if (grade === 10 || grade === 11) {
+                const el = electives.map(id => P1_ELECTIVES.find(e => e.id === id)).filter(Boolean);
+                return [...P1_COMPULSORY, ...el, P1_FURTHER, P1_TRANSVERSAL];
+            }
+            const st = STREAMS.find(s => s.id === stream) || STREAMS[0];
+            return [...st.subjects, ...P2_COMMON];
+        }
+
+        const T = {
+            title: { en: 'Student GPA Calculator', ta: 'மாணவர் GPA கணிப்பான்' },
+            subtitle: { en: 'New Education Reform System (Grade 6–13)', ta: 'புதிய கல்விச் சீர்திருத்த முறை (தரம் 6–13)' },
+            student: { en: 'Student & School Details', ta: 'மாணவர் & பாடசாலை விபரங்கள்' },
+            name: { en: 'Full Name', ta: 'முழுப் பெயர்' },
+            indexNo: { en: 'Index / Admission No.', ta: 'சுட்டெண் / அனுமதி இல.' },
+            province: { en: 'Province', ta: 'மாகாணம்' },
+            district: { en: 'District', ta: 'மாவட்டம்' },
+            zone: { en: 'Education Zone', ta: 'கல்வி வலயம்' },
+            division: { en: 'Education Division', ta: 'கல்விப் பிரிவு' },
+            school: { en: 'School', ta: 'பாடசாலை' },
+            loadingSchools: { en: 'Loading school directory…', ta: 'பாடசாலை தரவை ஏற்றுகிறது…' },
+            schoolsError: { en: 'Could not load the school directory. Please retry.',
+            ta: 'பாடசாலை தரவை ஏற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.' },
+            grade: { en: 'Grade', ta: 'தரம்' },
+            stream: { en: 'Subject Stream', ta: 'பாடப் பிரிவு' },
+            electives: { en: 'Choose 2 Elective Subjects', ta: '2 விருப்பப் பாடங்களைத் தெரிவுசெய்க' },
+            subjects: { en: 'Subjects & Scores', ta: 'பாடங்கள் & புள்ளிகள்' },
+            subject: { en: 'Subject', ta: 'பாடம்' },
+            credit: { en: 'Credit', ta: 'கிரெடிட்' },
+            score: { en: 'Score (%)', ta: 'புள்ளி (%)' },
+            gpa: { en: 'GPA', ta: 'GPA' },
+            grade_letter: { en: 'Grade', ta: 'தரம்' },
+            status: { en: 'Status', ta: 'நிலை' },
+            pass: { en: 'PASS', ta: 'தேர்ச்சி' },
+            fail: { en: 'FAIL', ta: 'தோல்வி' },
+            overall: { en: 'OVERALL GPA', ta: 'மொத்த GPA' },
+            totalCredits: { en: 'Total Credits', ta: 'மொத்த கிரெடிட்கள்' },
+            classification: { en: 'Classification', ta: 'வகைப்பாடு' },
+            calculate: { en: 'Calculate GPA', ta: 'GPA கணக்கிடு' },
+            reset: { en: 'Reset', ta: 'மீட்டமை' },
+            download: { en: 'Download PDF Report', ta: 'PDF அறிக்கையை பதிவிறக்கு' },
+            print: { en: 'Print', ta: 'அச்சிடு' },
+            results: { en: 'Results Summary', ta: 'முடிவுகள் சுருக்கம்' },
+            selectPlaceholder: { en: 'Select…', ta: 'தெரிவு செய்க…' },
+            scale: { en: 'GPA Scale Reference', ta: 'GPA அளவுகோல் குறிப்பு' },
+            schoolFinder: { en: 'School directory data from', ta: 'பாடசாலை தரவு மூலம்' },
+            language: { en: 'தமிழ் / English', ta: 'English / தமிழ்' },
+            printHint: { en: 'Use browser print (Ctrl+P) for a clean report',
+            ta: 'சுத்தமான அறிக்கைக்கு உலாவி அச்சிடலை (Ctrl+P) பயன்படுத்தவும்' },
+        };
+
+        const L = (k, lang) => T[k]?.[lang] ?? T[k]?.en ?? k;
+
+        const SCHOOLS_ENDPOINT =
+            'https://script.google.com/macros/s/AKfycbyeQKQzeSe82PqHHy00j3KSET-4_O9WQOZLDdWFJUpZgmYOCpeBgj9M9UJyfdLCUuXrSQ/exec';
+        const clean = v => String(v || '').replace(/^\s*\d+\s*[.)-]\s*/, '').trim();
+        const uniqueSorted = arr => Array.from(new Set(arr.filter(Boolean))).sort((a, b) => clean(a).localeCompare(
+        clean(b)));
+
+        function loadSchools() {
+            return fetch(SCHOOLS_ENDPOINT)
+                .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+                .then(d => Array.isArray(d) ? d : []);
+        }
+
+        /* ================================================================
+           PDF GENERATION
+           ================================================================ */
+
+        function generateResultPDF(p) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+            const W = doc.internal.pageSize.getWidth();
+            const MAROON = [114, 24, 36];
+            const GREY = [55, 65, 81];
+            const LIGHT = [243, 244, 246];
+
+            // Header
+            doc.setFillColor(...MAROON);
+            doc.rect(0, 0, W, 90, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(20);
+            doc.text('Student GPA Report', W / 2, 38, { align: 'center' });
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            
+            doc.setFontSize(9);
+            doc.text('New Education Reform System (Grade 6–13)', W / 2, 74, { align: 'center' });
+
+            let y = 115;
+            doc.setTextColor(...GREY);
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Student Details', 40, y);
+            doc.setDrawColor(...MAROON);
+            doc.setLineWidth(1);
+            doc.line(40, y + 4, W - 40, y + 4);
+
+            y += 22;
+            const info = [
+                ['Name', p.studentName || '-'],
+                ['Index No.', p.indexNo || '-'],
+                ['School', p.school || '-'],
+                ['Province', p.province || '-'],
+                ['District', p.district || '-'],
+                ['Zone', p.zone || '-'],
+                ['Division', p.division || '-'],
+                ['Grade', p.grade],
+            ];
+            if (p.streamOrTrack) info.push(['Stream', p.streamOrTrack]);
+
+            doc.setFontSize(10);
+            const col2X = W / 2 + 10;
+            info.forEach((pair, i) => {
+                const x = i % 2 === 0 ? 40 : col2X,
+                    row = Math.floor(i / 2);
+                doc.setFont('helvetica', 'bold');
+                doc.text(pair[0] + ':', x, y + row * 16);
+                doc.setFont('helvetica', 'normal');
+                doc.text(String(pair[1]), x + 80, y + row * 16);
+            });
+            y += Math.ceil(info.length / 2) * 16 + 15;
+
+            // Subject table
+            doc.autoTable({
+                startY: y,
+                head: [
+                    ['#', 'Subject', 'Credit', 'Score (%)', 'GPA', 'Grade', 'Status']
+                ],
+                body: p.rows.map((r, i) => [i + 1, r.subject, r.credit, r.score === '' ? '-' : String(r.score), r.gpa
+                    .toFixed(2), r.letter, r.status
+                ]),
+                theme: 'grid',
+                headStyles: { fillColor: MAROON, textColor: 255, fontStyle: 'bold', halign: 'center' },
+                bodyStyles: { textColor: GREY, fontSize: 9 },
+                alternateRowStyles: { fillColor: LIGHT },
+                columnStyles: {
+                    0: { halign: 'center', cellWidth: 28 },
+                    2: { halign: 'center', cellWidth: 45 },
+                    3: { halign: 'center', cellWidth: 60 },
+                    4: { halign: 'center', cellWidth: 45 },
+                    5: { halign: 'center', cellWidth: 45 },
+                    6: { halign: 'center', cellWidth: 55 }
+                },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.column.index === 6) {
+                        const v = String(data.cell.raw).toUpperCase();
+                        data.cell.styles.fontStyle = 'bold';
+                        data.cell.styles.textColor = v.includes('FAIL') || String(data.cell.raw).includes('தோல்வி') ?
+                            [178, 34, 34] : [21, 128, 61];
+                    }
+                },
+                margin: { left: 40, right: 40 },
+            });
+
+            const finalY = doc.lastAutoTable.finalY + 25;
+            doc.setFillColor(...MAROON);
+            doc.roundedRect(40, finalY, W - 80, 90, 8, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text('OVERALL GPA', 60, finalY + 28);
+            doc.setFontSize(36);
+            doc.text(p.overallGPA.toFixed(2), 60, finalY + 68);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Total Credits: ' + p.totalCredits, W - 60, finalY + 28, { align: 'right' });
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(12);
+            doc.text(p.classification, W - 60, finalY + 55, { align: 'right' });
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.text('Scale: 4.00 (A+ ≥90 – A ≥80 – B+ ≥70 – B ≥60 – C ≥50 – S ≥40 – F <40)', W - 60, finalY + 75,
+            { align: 'right' });
+
+            doc.setTextColor(...GREY);
+            doc.setFontSize(8);
+            doc.text('Generated: ' + p.generatedAt, 40, 820);
+            doc.text('This is a computer-generated report.', W - 40, 820, { align: 'right' });
+            doc.save('GPA_Report_' + (p.studentName || 'student').replace(/\s+/g, '_') + '.pdf');
+        }
+
+        /* ================================================================
+           REACT APP
+           ================================================================ */
+
+        function App() {
+            const [lang, setLang] = useState('en');
+            const [grade, setGrade] = useState(10);
+            const [stream, setStream] = useState('science');
+            const [electives, setElectives] = useState([]);
+            const [scores, setScores] = useState({});
+            const [showResults, setShowResults] = useState(false);
+
+            const [student, setStudent] = useState({
+                name: '',
+                indexNo: '',
+                province: '',
+                district: '',
+                zone: '',
+                division: '',
+                school: '',
+            });
+
+            const [schools, setSchools] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+
+            const Lk = k => L(k, lang);
+
+            useEffect(() => {
+                let alive = true;
+                setLoading(true);
+                loadSchools()
+                    .then(d => { if (alive) { setSchools(d);
+                            setError(null); } })
+                    .catch(e => { if (alive) setError(e.message); })
+                    .finally(() => { if (alive) setLoading(false); });
+                return () => { alive = false; };
+            }, []);
+
+            const provinces = useMemo(() => schools ? uniqueSorted(schools.map(s => s.PROVINCE)) : [], [schools]);
+            const districts = useMemo(() =>
+                schools && student.province ? uniqueSorted(schools.filter(s => s.PROVINCE === student.province).map(
+                    s => s.DISTRICT)) : [],
+                [schools, student.province]
+            );
+            const zones = useMemo(() =>
+                schools && student.district ? uniqueSorted(schools.filter(s => s.DISTRICT === student.district).map(
+                    s => s.EDU_ZONE)) : [],
+                [schools, student.district]
+            );
+            const divisions = useMemo(() =>
+                schools && student.zone ? uniqueSorted(schools.filter(s => s.EDU_ZONE === student.zone).map(s => s
+                    .EDU_DIVISION)) : [],
+                [schools, student.zone]
+            );
+            const schoolNames = useMemo(() => {
+                if (!schools) return [];
+                const scoped = schools.filter(s => {
+                    if (student.division) return s.EDU_DIVISION === student.division;
+                    if (student.zone) return s.EDU_ZONE === student.zone;
+                    if (student.district) return s.DISTRICT === student.district;
+                    if (student.province) return s.PROVINCE === student.province;
+                    return false;
+                });
+                return uniqueSorted(scoped.map(s => s.SCHOOL_NAME));
+            }, [schools, student.province, student.district, student.zone, student.division]);
+
+            const subjects = useMemo(() =>
+                getSubjectsForGrade(grade, { electives, stream }), [grade, electives, stream]
+            );
+
+            const results = useMemo(() => {
+                let totalCredits = 0,
+                    weighted = 0;
+                const rows = subjects.map(s => {
+                    const raw = scores[s.id];
+                    const n = raw === undefined || raw === '' ? NaN : Math.max(0, Math.min(100, Number(raw)));
+                    const has = !Number.isNaN(n);
+                    const g = has ? scoreToGPA(n) : { point: 0, letter: '-', pass: false };
+                    if (has) { totalCredits += s.credits;
+                        weighted += g.point * s.credits; }
+                    return {
+                        id: s.id,
+                        name: lang === 'en' ? s.en : s.ta,
+                        credits: s.credits,
+                        score: has ? n : '',
+                        gpa: g.point,
+                        letter: g.letter,
+                        pass: g.pass,
+                        has,
+                    };
+                });
+                const overall = totalCredits > 0 ? weighted / totalCredits : 0;
+                return { rows, totalCredits, overall };
+            }, [subjects, scores, lang]);
+
+            const toggleElective = id => {
+                setElectives(prev => {
+                    if (prev.includes(id)) return prev.filter(x => x !== id);
+                    if (prev.length >= 2) return prev;
+                    return [...prev, id];
+                });
+            };
+
+            const updateStudent = (patch) => setStudent(s => ({ ...s, ...patch }));
+
+            const resetAll = () => {
+                setScores({});
+                setShowResults(false);
+                setElectives([]);
+            };
+
+            const handleDownload = () => {
+                const streamName = (grade === 12 || grade === 13) ? (STREAMS.find(s => s.id === stream) || {})[
+                lang] : '';
+                generateResultPDF({
+                    studentName: student.name,
+                    indexNo: student.indexNo,
+                    school: student.school,
+                    province: clean(student.province),
+                    district: clean(student.district),
+                    zone: student.zone,
+                    division: student.division,
+                    grade: Lk('grade') + ' ' + grade,
+                    streamOrTrack: streamName,
+                    rows: results.rows.map(r => ({
+                        subject: r.name,
+                        credit: r.credits,
+                        score: r.score,
+                        gpa: r.gpa,
+                        letter: r.letter,
+                        status: r.has ? (r.pass ? Lk('pass') : Lk('fail')) : '-',
+                    })),
+                    totalCredits: results.totalCredits,
+                    overallGPA: results.overall,
+                    classification: classify(results.overall, lang),
+                    generatedAt: new Date().toLocaleString('en-GB'),
+                });
+            };
+
+            const handlePrint = () => {
+                window.print();
+            };
+
+            return ( <
+                    div className = { lang === 'ta' ? 'lang-ta' : '' } >
+                    <
+                    header >
+                    <
+                    div className = "wrap" >
+                    <
+                    div className = "brand" >
+                    <
+                    div className = "brand-icon" > 🎓 < /div> <
+                    div >
+                    <
+                    h1 > { Lk('title') } < /h1> <
+                    p > { Lk('subtitle') } < /p> <
+                    
+                    /div> <
+                    /div> <
+                    button className = "lang-btn no-print"
+                    onClick = {
+                        () => setLang(lang === 'en' ? 'ta' : 'en') } >
+                    🌐 { Lk('language') } <
+                    /button> <
+                    /div> <
+                    /header>
+
+                    <
+                    main className = "wrap" >
+                    <
+                    div className = "card" >
+                    <
+                    h2 > < span className = "accent-line" > < /span> {Lk('student')} < /h2> <
+                    div className = "grid" >
+                    <
+                    div >
+                    <
+                    label > { Lk('name') } < /label> <
+                    input value = { student.name }
+                    onChange = { e => updateStudent({ name: e.target.value }) }
+                    placeholder = { Lk('name') }
+                    /> <
+                    /div> <
+                    div >
+                    <
+                    label > { Lk('indexNo') } < /label> <
+                    input value = { student.indexNo }
+                    onChange = { e => updateStudent({ indexNo: e.target.value }) }
+                    placeholder = { Lk('indexNo') }
+                    /> <
+                    /div> <
+                    div >
+                    <
+                    label > { Lk('province') } < /label> <
+                    select value = { student.province }
+                    disabled = { !schools }
+                    onChange = { e => updateStudent({ province: e.target.value, district: '', zone: '', division: '',
+                            school: '' }) } >
+                    <
+                    option value = "" > { Lk('selectPlaceholder') } < /option> {provinces.map(p => < option key = { p }
+                    value = { p } > { clean(p) } < /option>)} <
+                    /select> <
+                    /div> <
+                    div >
+                    <
+                    label > { Lk('district') } < /label> <
+                    select value = { student.district }
+                    disabled = { !student.province }
+                    onChange = { e => updateStudent({ district: e.target.value, zone: '', division: '', school: '' }) } >
+                    <
+                    option value = "" > { Lk('selectPlaceholder') } < /option> {districts.map(d => < option key = { d }
+                    value = { d } > { clean(d) } < /option>)} <
+                    /select> <
+                    /div> <
+                    div >
+                    <
+                    label > { Lk('zone') } < /label> <
+                    select value = { student.zone }
+                    disabled = { !student.district }
+                    onChange = { e => updateStudent({ zone: e.target.value, division: '', school: '' }) } >
+                    <
+                    option value = "" > { Lk('selectPlaceholder') } < /option> {zones.map(z => < option key = { z }
+                    value = { z } > { z } < /option>)} <
+                    /select> <
+                    /div> <
+                    div >
+                    <
+                    label > { Lk('division') } < /label> <
+                    select value = { student.division }
+                    disabled = { !student.zone }
+                    onChange = { e => updateStudent({ division: e.target.value, school: '' }) } >
+                    <
+                    option value = "" > { Lk('selectPlaceholder') } < /option> {divisions.map(d => < option key = { d }
+                    value = { d } > { d } < /option>)} <
+                    /select> <
+                    /div> <
+                    div style = { { gridColumn: '1 / -1' } } >
+                    <
+                    label > { Lk('school') } < /label> <
+                    select value = { student.school }
+                    disabled = { !student.province }
+                    onChange = { e => updateStudent({ school: e.target.value }) } >
+                    <
+                    option value = "" > { Lk('selectPlaceholder') } < /option> {schoolNames.map(s => < option key = { s }
+                    value = { s } > { s } < /option>)} <
+                    /select> <
+                    /div> <
+                    /div> {
+                        loading && < p className = "note" > ⏳ { Lk('loadingSchools') } < /p>} {
+                            error && < p className = "note"
+                            style = { { color: 'var(--bad)' } } > ⚠ { Lk('schoolsError') } < /p>} {
+                                schools && < p className = "note" >
+                                { Lk('schoolFinder') } { ' ' } <
+                                a href = "https://www.guruwaraya.lk/2026/03/sri-lanka-school-details-search-tool.html?m=1"
+                                target = "_blank"
+                                rel = "noreferrer" >
+                                guruwaraya.lk ↗ <
+                                /a> <
+                                /p>} <
+                                /div>
+
+                                <
+                                div className = "card" >
+                                <
+                                h2 > < span className = "accent-line" > < /span> {Lk('grade')} & amp; {lang === 'en' ? 'Curriculum' : 'பாடத்திட்டம்'} < /h2> <
+                                div className = "grade-tabs" > { [6, 7, 8, 9, 10, 11, 12, 13].map(g => ( <
+                                        button key = { g }
+                                        className = { 'grade-tab' + (grade === g ? ' active' : '') }
+                                        onClick = {
+                                            () => { setGrade(g);
+                                                setElectives([]);
+                                                setScores({});
+                                                setShowResults(false); } } >
+                                        { Lk('grade') } { g } <
+                                        /button>
+                                    )) } <
+                                    /div> {
+                                        (grade === 10 || grade === 11) && ( <
+                                            div style = { { marginTop: 12 } } >
+                                            <
+                                            p style = { { fontWeight: 600, fontSize: 14, marginBottom: 8 } } >
+                                            { Lk('electives') } ({electives.length}/2) <
+                                            /p> <
+                                            div className = "chips" > { P1_ELECTIVES.map(e => {
+                                                    const active = electives.includes(e.id);
+                                                    const disabled = !active && electives.length >= 2;
+                                                    return ( <
+                                                        span key = { e.id }
+                                                        className = { 'chip' + (active ? ' on' : '') + (disabled ?
+                                                            ' off' : '') }
+                                                        onClick = {
+                                                            () => { if (!disabled) toggleElective(e.id); } } >
+                                                        { lang === 'en' ? e.en : e.ta } <
+                                                        span className = "cred" > { e.credits }
+                                                        cr < /span> <
+                                                        /span>
+                                                    );
+                                                }) } <
+                                                /div> <
+                                                /div>
+                                            )
+                                    } {
+                                        (grade === 12 || grade === 13) && ( <
+                                            div style = { { marginTop: 12 } } >
+                                            <
+                                            p style = { { fontWeight: 600, fontSize: 14, marginBottom: 8 } } >
+                                            { Lk('stream') } <
+                                            /p> <
+                                            div className = "chips" > { STREAMS.map(s => ( <
+                                                    span key = { s.id }
+                                                    className = { 'chip' + (stream === s.id ? ' on' : '') }
+                                                    onClick = {
+                                                        () => { setStream(s.id);
+                                                            setScores({});
+                                                            setShowResults(false); } } >
+                                                    { s[lang] } <
+                                                    /span>
+                                                )) } <
+                                                /div> <
+                                                /div>
+                                            )
+                                    } <
+                                    /div>
+
+                                    <
+                                    div className = "card" >
+                                    <
+                                    h2 > < span className = "accent-line" > < /span> {Lk('subjects')} < /h2> <
+                                    div className = "table-wrap" >
+                                    <
+                                    table >
+                                    <
+                                    thead >
+                                    <
+                                    tr >
+                                    <
+                                    th style = { { width: 40 } } > # < /th> <
+                                    th > { Lk('subject') } < /th> <
+                                    th className = "c" > { Lk('credit') } < /th> <
+                                    th className = "c" > { Lk('score') } < /th> <
+                                    th className = "c" > { Lk('gpa') } < /th> <
+                                    th className = "c" > { Lk('grade_letter') } < /th> <
+                                    th className = "c" > { Lk('status') } < /th> <
+                                    /tr> <
+                                    /thead> <
+                                    tbody > { results.rows.map((r, i) => ( <
+                                            tr key = { r.id } >
+                                            <
+                                            td className = "c" > { i + 1 } < /td> <
+                                            td > { r.name } < /td> <
+                                            td className = "c" > { r.credits } < /td> <
+                                            td className = "c" >
+                                            <
+                                            input className = "score-input"
+                                            type = "number"
+                                            min = "0"
+                                            max = "100"
+                                            step = "0.01"
+                                            value = { scores[r.id] ?? '' }
+                                            onChange = { e => setScores(p => ({ ...p, [r.id]: e.target.value })) }
+                                            placeholder = "0-100"
+                                            /> <
+                                            /td> <
+                                            td className = "c" > { r.has ? r.gpa.toFixed(2) : '-' } < /td> <
+                                            td className = "c" > < strong > { r.letter } < /strong></td >
+                                            <
+                                            td className = "c" > { r.has ? < span className = { r.pass ? 'pass' : 'fail' } >
+                                                { r.pass ? Lk('pass') : Lk('fail') } < /span> : '-'} <
+                                            /td> <
+                                            /tr>
+                                        )) } <
+                                        /tbody> <
+                                        /table> <
+                                        /div> <
+                                        div className = "actions no-print" >
+                                        <
+                                        button className = "btn btn-primary"
+                                        onClick = {
+                                            () => setShowResults(true) } >
+                                        { Lk('calculate') } <
+                                        /button> <
+                                        button className = "btn btn-outline"
+                                        onClick = { resetAll } >
+                                        { Lk('reset') } <
+                                        /button> <
+                                        /div> <
+                                        /div>
+
+                                        {
+                                            showResults && ( <
+                                                div className = "card" >
+                                                <
+                                                h2 > < span className = "accent-line" > < /span> {Lk('results')} < /h2> <
+                                                div className = "gpabox" >
+                                                <
+                                                div >
+                                                <
+                                                div className = "label" > { Lk('overall') } < /div> <
+                                                div className = "big" > { results.overall.toFixed(2) } < /div> <
+                                                div style = { { fontSize: 13, opacity: 0.8, marginTop: 4 } } >
+                                                { Lk('totalCredits') }: { results.totalCredits } <
+                                                /div> <
+                                                /div> <
+                                                div className = "right" >
+                                                <
+                                                div className = "classification" >
+                                                { classify(results.overall, lang) } <
+                                                /div> <
+                                                div style = { { fontSize: 12, opacity: 0.7, marginTop: 4 } } >
+                                                A + ≥90 • A ≥80 • B + ≥70 • B ≥60 • C ≥50 • S ≥40 • F & lt;40 <
+                                                /div> <
+                                                /div> <
+                                                /div> <
+                                                div className = "actions no-print actions-center" >
+                                                <
+                                                button className = "btn btn-gold"
+                                                onClick = { handleDownload } >
+                                                📄 { Lk('download') } <
+                                                /button> <
+                                                button className = "btn btn-primary"
+                                                onClick = { handlePrint } >
+                                                🖨 { Lk('print') } <
+                                                /button> <
+                                                /div> <
+                                                p className = "note no-print" style = { { textAlign: 'center' } } >
+                                                { Lk('printHint') } <
+                                                /p> <
+                                                /div>
+                                            )
+                                        }
+
+                                        <
+                                        div className = "card" >
+                                        <
+                                        h2 > < span className = "accent-line" > < /span> {Lk('scale')} < /h2> <
+                                        div className = "scale-grid" > {
+                                            [
+                                                ['90–100%', 'A+', '4.0'],
+                                                ['80–89%', 'A', '3.7'],
+                                                ['70–79%', 'B+', '3.3'],
+                                                ['60–69%', 'B', '3.0'],
+                                                ['50–59%', 'C', '2.7'],
+                                                ['40–49%', 'S', '2.0'],
+                                                ['< 40%', 'F', '0.0'],
+                                            ].map(([range, letter, pt]) => ( <
+                                                div key = { letter }
+                                                className = { 'scale-item' + (letter === 'F' ? ' fail' : '') } >
+                                                <
+                                                div className = "letter" > { letter } < /div> <
+                                                div className = "range" > { range } < /div> <
+                                                div className = "pt" > { pt } < /div> <
+                                                /div>
+                                            ))
+                                        } <
+                                        /div> <
+                                        /div>
+
+                                        <
+                                        footer >
+                                        Student GPA Calculator • { Lk('schoolFinder') } { ' ' } <
+                                        a href = "https://www.guruwaraya.lk/2026/03/sri-lanka-school-details-search-tool.html?m=1"
+                                        target = "_blank"
+                                        rel = "noreferrer" > guruwaraya.lk < /a> •
+                                        { ' ' } { new Date().getFullYear() } <
+                                        /footer> <
+                                        /main> <
+                                        /div>
+                                    );
+                                }
+
+                                ReactDOM.createRoot(document.getElementById('root')).render( < App / > );
+    </script>
+</body>
+</html>
